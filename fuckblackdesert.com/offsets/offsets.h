@@ -11,13 +11,11 @@ struct offsets_t {
 class CLocalPlayer
 {
 public:
-	char pad_0000[104]; //0x0000
-	wchar_t* name; //0x0068
-	char pad_0070[2952]; //0x0070
-	int32_t speedbuff; //0x0BF8
-	int32_t attackbuff; //0x0BFC
-	int32_t castbuff; //0x0C00
-	char pad_0C04[1104]; //0x0C04
-}; //Size: 0x1054
+	char pad_0000[3096]; //0x0000
+	int32_t movespeed; //0x0C18
+	int32_t attackspeed; //0x0C1C
+	int32_t castspeed; //0x0C20
+	char pad_0C24[5148]; //0x0C24
+}; //Size: 0x2040
 
 extern void CollectOffsets();

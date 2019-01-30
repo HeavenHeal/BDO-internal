@@ -14,6 +14,7 @@ DWORD_PTR* pSwapChainVtable = NULL;
 DWORD_PTR* pContextVTable = NULL;
 DWORD_PTR* pDeviceVTable = NULL;
 bool first_time = true;
+bool patch = false;
 bool open = false;
 struct VERTEX { FLOAT X, Y, Z; D3DXCOLOR Color; };
 
@@ -64,6 +65,9 @@ CLocalPlayer* pLocalPlayer = nullptr;
 
 HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT Flags)
 {
+	static int32_t oldspeed = 0.f;
+	static int32_t oldattack = 0.f;
+	static int32_t oldcast = 0.f;
 	if (first_time)
 	{
 		first_time = false;
@@ -86,33 +90,49 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 
 	}
 
-	if(!pLocalPlayer)
-		pLocalPlayer = (CLocalPlayer*)*(uint64_t*)offys.dw_localplayer;
+	if (!pLocalPlayer)
+		pLocalPlayer = (CLocalPlayer*) * (uint64_t*)offys.dw_localplayer;
+
+	std::cout << offys.dw_localplayer << std::endl;
+	std::cout << pLocalPlayer << std::endl;
+
 	if (pLocalPlayer) {
-		unsigned long OldProtection;
-		VirtualProtect((LPVOID)((offys.dw_clientspeedac)), 1, PAGE_EXECUTE_READWRITE, &OldProtection); //disable velocity checks
-		memcpy((LPVOID)((offys.dw_clientspeedac)), "\xC3", 1);
-		VirtualProtect((LPVOID)((offys.dw_clientspeedac)), 1, OldProtection, NULL);
-		unsigned long OldProtection2;
-		VirtualProtect((LPVOID)((offys.dw_clientattackac)), 1, PAGE_EXECUTE_READWRITE, &OldProtection2); //disable attack checks
-		memcpy((LPVOID)((offys.dw_clientattackac)), "\xC3", 1);
-		VirtualProtect((LPVOID)((offys.dw_clientattackac)), 1, OldProtection2, NULL);
-		if(g_movingspeed)
-			pLocalPlayer->speedbuff = 2147483647;
-		else{
-			pLocalPlayer->speedbuff = 90000;
+		*(float*)offys.f_cam_max_dist = g_cameradist;
+		if (!patch) {
+			unsigned long OldProtection;
+			VirtualProtect((LPVOID)((offys.dw_clientspeedac)), 1, PAGE_EXECUTE_READWRITE, &OldProtection); //disable velocity checks
+			memcpy((LPVOID)((offys.dw_clientspeedac)), "\xC3", 1);
+			VirtualProtect((LPVOID)((offys.dw_clientspeedac)), 1, OldProtection, NULL);
+			unsigned long OldProtection2;
+			VirtualProtect((LPVOID)((offys.dw_clientattackac)), 1, PAGE_EXECUTE_READWRITE, &OldProtection2); //disable attack checks
+			memcpy((LPVOID)((offys.dw_clientattackac)), "\xC3", 1);
+			VirtualProtect((LPVOID)((offys.dw_clientattackac)), 1, OldProtection2, NULL);
+			patch = true;
 		}
+		
+		if (g_movingspeed) {
+			if (!oldspeed)
+				oldspeed = pLocalPlayer->movespeed;
+
+			pLocalPlayer->movespeed = 11111111;
+		}
+		else
+			pLocalPlayer->movespeed = oldspeed;
 		if (g_attackspeed) {
-			pLocalPlayer->attackbuff = 1111111;
-			pLocalPlayer->castbuff = 1111111;
+			if (!oldattack)
+				oldattack = pLocalPlayer->attackspeed;
+
+			if(!oldcast)
+				oldcast = pLocalPlayer->castspeed;
+
+			pLocalPlayer->attackspeed = 1111111;
+			pLocalPlayer->castspeed = 1111111;
 		}
 		else {
-			pLocalPlayer->attackbuff = 50000;
-			pLocalPlayer->castbuff = 50000;
+			pLocalPlayer->castspeed = oldcast;
+			pLocalPlayer->attackspeed = oldattack;
 		}
 	}
-
-	*(float*)offys.f_cam_max_dist = g_cameradist;
 
 	if (open) {
 		ImGui_ImplDX11_NewFrame();
@@ -120,13 +140,6 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 		if (ImGui::Begin("gideonhack.pw", &open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings)) {
 
 			ImGui::BeginChild("hacks"); {
-
-				if (pLocalPlayer) {
-					std::wstring wstr(pLocalPlayer->name);
-					std::string str(wstr.begin(), wstr.end());
-					ImGui::Text("Hello: %s", str.c_str());
-				}
-
 				ImGui::SliderFloat("maximum camera dist", &g_cameradist, 70.f, 10000.f);
 				ImGui::Checkbox("speed hack", &g_movingspeed);
 				ImGui::Checkbox("attack speed hack", &g_attackspeed);
@@ -137,5 +150,6 @@ HRESULT __stdcall hookD3D11Present(IDXGISwapChain* pSwapChain, UINT SyncInterval
 		}
 		ImGui::Render();
 	}
+	std::cout << "present" << std::endl;
 	return oPresent(pSwapChain, SyncInterval, Flags);
 }

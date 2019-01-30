@@ -9,14 +9,15 @@ bool Hooks() {
 
 	while (!hDxgidll) {
 		hDxgidll = GetModuleHandleA("dxgi.dll");
+		std::cout << "dxgi.dll" << std::endl;
 		std::this_thread::sleep_for(15ms);
 	}
 
 	IDXGISwapChain* pSwapChain;
 
-	WNDCLASSEXA wc = { sizeof(WNDCLASSEX), CS_CLASSDC, FakeWnd, 0L, 0L, GetModuleHandleA(NULL), NULL, NULL, NULL, NULL, "blackdesert", NULL };
+	WNDCLASSEXA wc = { sizeof(WNDCLASSEX), CS_CLASSDC, FakeWnd, 0L, 0L, GetModuleHandleA(NULL), NULL, NULL, NULL, NULL, "huyy", NULL };
 	RegisterClassExA(&wc);
-	HWND hWnd = CreateWindowA("blackdesert", NULL, WS_OVERLAPPEDWINDOW, 100, 100, 300, 300, NULL, NULL, wc.hInstance, NULL);
+	HWND hWnd = CreateWindowA("huyy", NULL, WS_OVERLAPPEDWINDOW, 100, 100, 300, 300, NULL, NULL, wc.hInstance, NULL);
 
 	D3D_FEATURE_LEVEL requestedLevels[] = { D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_1 };
 	D3D_FEATURE_LEVEL obtainedLevel;
@@ -71,13 +72,11 @@ bool Hooks() {
 
 	pDeviceVTable = (DWORD_PTR*)pDevice;
 	pDeviceVTable = (DWORD_PTR*)pDeviceVTable[0];
-
 	if (MH_Initialize() != MH_OK) { return false; }
 	if (MH_CreateHook((DWORD_PTR*)pSwapChainVtable[8], hookD3D11Present, reinterpret_cast<void**>(&oPresent)) != MH_OK) { return false; }
 	if (MH_EnableHook((DWORD_PTR*)pSwapChainVtable[8]) != MH_OK) { return false; }
 	DWORD dwOld;
 	VirtualProtect(oPresent, 2, PAGE_EXECUTE_READWRITE, &dwOld);
-
 	return true;
 }
 
